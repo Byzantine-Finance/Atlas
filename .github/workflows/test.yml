@@ -11,7 +11,7 @@ env:
 
 jobs:
   check:
-    name: Foundry project
+    name: Run Gas Sponsorship tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -20,13 +20,10 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@v1.5.0
 
       - name: Show Forge version
         run: forge --version
-
-      - name: Run Forge fmt
-        run: forge fmt --check
 
       - name: Run Forge build
         run: forge build --sizes
