@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSE
-pragma solidity ^0.8.0;
+pragma solidity 0.8.30;
 
-error InvalidSignature();
+interface IAtlas {
+    event CallExecuted(address indexed sender, address indexed to, uint256 value, bytes data);
+    event BatchExecuted(uint256 indexed nonce, Call[] calls);
 
-contract Atlas {
-    uint256 public nonce;
+    error InvalidSignature();
 
     /// @notice Represents a single call within a batch.
     struct Call {
@@ -13,8 +14,11 @@ contract Atlas {
         bytes data;
     }
 
-    event CallExecuted(address indexed sender, address indexed to, uint256 value, bytes data);
-    event BatchExecuted(uint256 indexed nonce, Call[] calls);
+    function execute(Call[] calldata calls, uint8 v, bytes32 r, bytes32 s) external payable;
+}
+
+contract Atlas is IAtlas{
+    uint256 public nonce;
 
     constructor() {
         // Initiate nonce to '0'
