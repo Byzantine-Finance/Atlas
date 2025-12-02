@@ -17,8 +17,10 @@ interface IAtlas {
     function execute(Call[] calldata calls, uint8 v, bytes32 r, bytes32 s) external payable;
 }
 
-contract Atlas is IAtlas{
+contract Atlas is IAtlas {
     uint256 public nonce;
+
+    bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
 
     constructor() {
         // Initiate nonce to '0'
@@ -30,9 +32,15 @@ contract Atlas is IAtlas{
         for (uint256 i = 0; i < calls.length; i++) {
             encodedCalls = abi.encodePacked(encodedCalls, calls[i].to, calls[i].value, calls[i].data);
         }
-        bytes32 digest = keccak256(abi.encodePacked(nonce, encodedCalls));
 
-        // Recover the signer from the provided signature.
+        // EIP 712 compliant message digest
+        bytes32 digest = keccak256(abi.encodePacked(
+            "\x19\x01",
+            DOMAIN_SEPARATOR(),
+            keccak256(abi.encodePacked(nonce, encodedCalls))
+        ));
+
+        // Recover the signer from the provided signature
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(recoveredAddress == address(this), InvalidSignature());
 
@@ -56,4 +64,9 @@ contract Atlas is IAtlas{
         require(success, "Call reverted");
         emit CallExecuted(msg.sender, callItem.to, callItem.value, callItem.data);
     }
+
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        return keccak256(abi.encode(DOMAIN_TYPEHASH, block.chainid, address(this)));
+    }
+
 }
