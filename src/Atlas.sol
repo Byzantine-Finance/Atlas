@@ -22,11 +22,6 @@ contract Atlas is IAtlas {
 
     bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
 
-    constructor() {
-        // Initiate nonce to '0'
-        nonce = 0;
-    }
-
     function execute(Call[] calldata calls, uint8 v, bytes32 r, bytes32 s) external payable {
         bytes memory encodedCalls;
         for (uint256 i = 0; i < calls.length; i++) {
@@ -34,11 +29,9 @@ contract Atlas is IAtlas {
         }
 
         // EIP 712 compliant message digest
-        bytes32 digest = keccak256(abi.encodePacked(
-            "\x19\x01",
-            DOMAIN_SEPARATOR(),
-            keccak256(abi.encodePacked(nonce, encodedCalls))
-        ));
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), keccak256(abi.encodePacked(nonce, encodedCalls)))
+        );
 
         // Recover the signer from the provided signature
         address recoveredAddress = ecrecover(digest, v, r, s);
@@ -68,5 +61,4 @@ contract Atlas is IAtlas {
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, block.chainid, address(this)));
     }
-
 }
