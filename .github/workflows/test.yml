@@ -5,12 +5,36 @@ permissions:
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
   check:
+    name: Check coding standards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1.5.0
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Run Forge fmt
+        run: forge fmt --check
+
+      - name: Run Forge lint
+        run: forge lint src/
+
+  tests:
     name: Run Gas Sponsorship tests
     runs-on: ubuntu-latest
     steps:

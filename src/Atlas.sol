@@ -25,7 +25,7 @@ contract Atlas {
             encodedCalls = abi.encodePacked(encodedCalls, calls[i].to, calls[i].value, calls[i].data);
         }
         bytes32 digest = keccak256(abi.encodePacked(nonce, encodedCalls));
-        
+
         // Recover the signer from the provided signature.
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(recoveredAddress == address(this), "Invalid signature");

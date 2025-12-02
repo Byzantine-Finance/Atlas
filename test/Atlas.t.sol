@@ -11,11 +11,11 @@ contract AtlasTest is Test {
     // Alice's address and private key (EOA with no initial contract code).
     address payable ALICE_ADDRESS = payable(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
     uint256 constant ALICE_PK = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
- 
-     // Bob's address and private key (Bob will execute transactions on Alice's behalf).
+
+    // Bob's address and private key (Bob will execute transactions on Alice's behalf).
     address constant BOB_ADDRESS = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     uint256 constant BOB_PK = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d;
- 
+
     function setUp() public {
         atlas = new Atlas();
 
@@ -38,7 +38,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = Atlas.Call(
             0x8464135c8F25Da09e49BC8782676a84730C318bC,
             0,
-            hex'a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a'
+            hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
         );
         Atlas.Call[] memory calls = new Atlas.Call[](1);
         calls[0] = call;
@@ -54,7 +54,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = Atlas.Call(
             0x8464135c8F25Da09e49BC8782676a84730C318bC,
             10,
-            hex'a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a'
+            hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
         );
         Atlas.Call[] memory calls = new Atlas.Call[](1);
         calls[0] = call;
@@ -71,7 +71,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = Atlas.Call(
             0x8464135c8F25Da09e49BC8782676a84730C318bC,
             0,
-            hex'a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a'
+            hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
         );
         Atlas.Call[] memory calls = new Atlas.Call[](1);
         calls[0] = call;
