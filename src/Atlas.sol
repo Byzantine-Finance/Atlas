@@ -24,7 +24,7 @@ contract Atlas is IAtlas {
     mapping(address => bool) public sponsors;
 
     bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
-    address constant OWNER = address(0x0000000000000000000000000000000000000000);
+    address constant OWNER = address(0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e); // bob is owner for the test. NOT READY FOR PROD.
 
     /*
         Modifiers
