@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSE
 pragma solidity ^0.8.0;
 
+error InvalidSignature();
+
 contract Atlas {
     uint256 public nonce;
 
@@ -28,13 +30,8 @@ contract Atlas {
 
         // Recover the signer from the provided signature.
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress == address(this), "Invalid signature");
+        require(recoveredAddress == address(this), InvalidSignature());
 
-        _executeBatch(calls);
-    }
-
-    function execute(Call[] calldata calls) external payable {
-        require(msg.sender == address(this), "Invalid authority");
         _executeBatch(calls);
     }
 
