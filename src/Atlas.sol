@@ -6,6 +6,7 @@ interface IAtlas {
     event BatchExecuted(uint256 indexed nonce, Call[] calls);
 
     error InvalidSignature();
+    error ExpiredSignature();
 
     /// @notice Represents a single call within a batch.
     struct Call {
@@ -14,7 +15,7 @@ interface IAtlas {
         bytes data;
     }
 
-    function execute(Call[] calldata calls, uint8 v, bytes32 r, bytes32 s) external payable;
+    function execute(Call[] calldata calls, uint deadline, uint8 v, bytes32 r, bytes32 s) external payable;
 }
 
 contract Atlas is IAtlas {
@@ -22,18 +23,23 @@ contract Atlas is IAtlas {
 
     bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
 
-    function execute(Call[] calldata calls, uint8 v, bytes32 r, bytes32 s) external payable {
+    function execute(Call[] calldata calls, uint deadline, uint8 v, bytes32 r, bytes32 s) external payable {
         bytes memory encodedCalls;
+
+        // Verify if the execution has not expired
+        require(block.timestamp < deadline, ExpiredSignature());
+
+        // Encode the calls to calculate the digest
         for (uint256 i = 0; i < calls.length; i++) {
             encodedCalls = abi.encodePacked(encodedCalls, calls[i].to, calls[i].value, calls[i].data);
         }
 
-        // EIP 712 compliant message digest
+        // EIP 712 compliant message digest. The digest also include the "nonce" and "deadline" to verify the instructions.
         bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), keccak256(abi.encodePacked(nonce, encodedCalls)))
+            abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), keccak256(abi.encodePacked(deadline, nonce, encodedCalls)))
         );
 
-        // Recover the signer from the provided signature
+        // Recover the signer from the provided signature and the digest of the message signed
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(recoveredAddress == address(this), InvalidSignature());
 
