@@ -7,6 +7,7 @@ interface IAtlas {
 
     error InvalidSignature();
     error ExpiredSignature();
+    error Unauthorized();
 
     /// @notice Represents a single call within a batch.
     struct Call {
@@ -15,15 +16,39 @@ interface IAtlas {
         bytes data;
     }
 
-    function execute(Call[] calldata calls, uint deadline, uint8 v, bytes32 r, bytes32 s) external payable;
+    function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external payable;
 }
 
 contract Atlas is IAtlas {
     uint256 public nonce;
+    mapping(address => bool) public sponsors;
 
     bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
+    address constant OWNER = address(0x0000000000000000000000000000000000000000);
 
-    function execute(Call[] calldata calls, uint deadline, uint8 v, bytes32 r, bytes32 s) external payable {
+    /*
+        Modifiers
+    */
+
+    modifier onlyOwner() {
+        require(msg.sender == OWNER, Unauthorized());
+        _;
+    }
+
+    modifier onlySponsor() {
+        require(sponsors[msg.sender], Unauthorized());
+        _;
+    }
+
+    /*
+        External functions
+    */
+
+    function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external
+        payable
+        onlySponsor
+    {
         bytes memory encodedCalls;
 
         // Verify if the execution has not expired
@@ -46,6 +71,18 @@ contract Atlas is IAtlas {
         _executeBatch(calls);
     }
 
+    function addSponsor(address sponsor) external onlyOwner {
+        sponsors[sponsor] = true;
+    }
+
+    function removeSponsor(address sponsor) external onlyOwner {
+        sponsors[sponsor] = false;
+    }
+
+    /*
+        Internal functions
+    */
+
     function _executeBatch(Call[] calldata calls) internal {
         uint256 currentNonce = nonce;
         nonce++; // Increment nonce to protect against replay attacks
@@ -63,6 +100,10 @@ contract Atlas is IAtlas {
         require(success, "Call reverted");
         emit CallExecuted(msg.sender, callItem.to, callItem.value, callItem.data);
     }
+
+    /*
+        Views
+    */
 
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, block.chainid, address(this)));
