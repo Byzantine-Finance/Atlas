@@ -55,8 +55,8 @@ contract Atlas is IAtlas {
         require(!usedNonces[nonce], NonceAlreadyUsed());
 
         // Retrieve eip-712 digest
-        bytes32 callHash = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
-        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALL_TYPEHASH, callHash, deadline, nonce));
+        bytes32 encodeData = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
+        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALL_TYPEHASH, encodeData, deadline, nonce));
         bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
 
         // Recover the signer
@@ -80,14 +80,15 @@ contract Atlas is IAtlas {
         require(!usedNonces[nonce], NonceAlreadyUsed());
 
         // Hash each call individually
-        bytes32[] memory callHashes = new bytes32[](calls.length);
+        bytes32[] memory callStructHashes = new bytes32[](calls.length);
         for (uint256 i; i < calls.length; ++i) {
-            callHashes[i] = keccak256(abi.encode(CALL_TYPEHASH, calls[i].to, calls[i].value, keccak256(calls[i].data)));
+            callStructHashes[i] =
+                keccak256(abi.encode(CALL_TYPEHASH, calls[i].to, calls[i].value, keccak256(calls[i].data)));
         }
 
         // Retrieve eip-712 digest
-        bytes32 callsHash = keccak256(abi.encodePacked(callHashes));
-        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALLS_TYPEHASH, callsHash, deadline, nonce));
+        bytes32 encodeData = keccak256(abi.encodePacked(callStructHashes));
+        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALLS_TYPEHASH, encodeData, deadline, nonce));
         bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
 
         // Recover the signer
