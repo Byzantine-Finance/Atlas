@@ -17,6 +17,7 @@ interface IAtlas {
     }
 
     function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external payable;
+    function execute(Call[] calldata calls) external payable;
 }
 
 contract Atlas is IAtlas {
@@ -48,6 +49,11 @@ contract Atlas is IAtlas {
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(recoveredAddress == address(this), InvalidSignature());
 
+        _executeBatch(calls);
+    }
+
+    function execute(Call[] calldata calls) external payable {
+        require(msg.sender == address(this), Unauthorized());
         _executeBatch(calls);
     }
 
