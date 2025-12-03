@@ -36,7 +36,7 @@ contract Atlas is IAtlas {
         require(block.timestamp < deadline, ExpiredSignature());
 
         // Encode the calls to calculate the digest
-        for (uint256 i = 0; i < calls.length; i++) {
+        for (uint256 i; i < calls.length; ++i) {
             encodedCalls = abi.encodePacked(encodedCalls, calls[i].to, calls[i].value, calls[i].data);
         }
 
@@ -65,7 +65,7 @@ contract Atlas is IAtlas {
         uint256 currentNonce = nonce;
         nonce++; // Increment nonce to protect against replay attacks
 
-        for (uint256 i = 0; i < calls.length; i++) {
+        for (uint256 i; i < calls.length; ++i) {
             _executeCall(calls[i]);
         }
 
