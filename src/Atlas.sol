@@ -111,16 +111,16 @@ contract Atlas is IAtlas {
     }
 
     /*
-        Internal functions
+        Private functions
     */
 
-    function _executeBatch(Call[] calldata calls) internal {
+    function _executeBatch(Call[] calldata calls) private {
         for (uint256 i; i < calls.length; ++i) {
             _executeCall(calls[i]);
         }
     }
 
-    function _executeCall(Call calldata callItem) internal {
+    function _executeCall(Call calldata callItem) private {
         // address(this) in the contract equals the EOA address NOT the contract address
         (bool success,) = callItem.to.call{value: callItem.value}(callItem.data);
         require(success, "Call reverted");
