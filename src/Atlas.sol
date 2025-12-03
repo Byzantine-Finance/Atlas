@@ -21,34 +21,14 @@ interface IAtlas {
 
 contract Atlas is IAtlas {
     uint256 public nonce;
-    mapping(address => bool) public sponsors;
 
     bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
-    address constant OWNER = address(0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e); // bob is owner for the test. NOT READY FOR PROD.
-
-    /*
-        Modifiers
-    */
-
-    modifier onlyOwner() {
-        require(msg.sender == OWNER, Unauthorized());
-        _;
-    }
-
-    modifier onlySponsor() {
-        require(sponsors[msg.sender], Unauthorized());
-        _;
-    }
 
     /*
         External functions
     */
 
-    function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external
-        payable
-        onlySponsor
-    {
+    function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external payable {
         bytes memory encodedCalls;
 
         // Verify if the execution has not expired
@@ -69,14 +49,6 @@ contract Atlas is IAtlas {
         require(recoveredAddress == address(this), InvalidSignature());
 
         _executeBatch(calls);
-    }
-
-    function addSponsor(address sponsor) external onlyOwner {
-        sponsors[sponsor] = true;
-    }
-
-    function removeSponsor(address sponsor) external onlyOwner {
-        sponsors[sponsor] = false;
     }
 
     /*

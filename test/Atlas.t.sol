@@ -33,7 +33,6 @@ contract AtlasTest is Test {
 
         // set bob as sponsor
         vm.broadcast(bob.privateKey);
-        Atlas(alice.addr).addSponsor(bob.addr);
     }
 
     function getDigest(Atlas.Call[] memory calls, uint256 deadline, uint256 nonce)
