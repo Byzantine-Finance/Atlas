@@ -16,9 +16,13 @@ interface IAtlas {
         bytes data;
     }
 
+    function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
+        external
+        payable;
     function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
         payable;
+    function executeCall(Call calldata call) external payable;
     function executeCalls(Call[] calldata calls) external payable;
 }
 
@@ -29,15 +33,41 @@ contract Atlas is IAtlas {
 
     bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
     bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
-    bytes32 constant EXECUTE_CALLS_TYPEHASH = keccak256(
-        "ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)" "Call(address to,uint256 value,bytes data)"
-    );
+    bytes32 constant EXECUTE_CALLS_TYPEHASH =
+        keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+    bytes32 constant EXECUTE_CALL_TYPEHASH =
+        keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
     mapping(uint256 => bool) public usedNonces;
 
     /*
         External functions
     */
+
+    function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
+        external
+        payable
+    {
+        // Verify deadline
+        require(block.timestamp <= deadline, ExpiredSignature());
+
+        // Verify nonce
+        require(!usedNonces[nonce], NonceAlreadyUsed());
+
+        // Retrieve eip-712 digest
+        bytes32 callHash = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
+        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALL_TYPEHASH, callHash, deadline, nonce));
+        bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
+
+        // Recover the signer
+        address recoveredAddress = ecrecover(digest, v, r, s);
+        require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
+
+        // Mark the nonce as used
+        usedNonces[nonce] = true;
+
+        _executeCall(call);
+    }
 
     function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
@@ -68,6 +98,11 @@ contract Atlas is IAtlas {
         usedNonces[nonce] = true;
 
         _executeBatch(calls);
+    }
+
+    function executeCall(Call calldata call) external payable {
+        require(msg.sender == address(this), Unauthorized());
+        _executeCall(call);
     }
 
     function executeCalls(Call[] calldata calls) external payable {
