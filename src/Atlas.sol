@@ -8,6 +8,7 @@ interface IAtlas {
     error ExpiredSignature();
     error Unauthorized();
     error NonceAlreadyUsed();
+    error CallReverted();
 
     /// @notice Represents a single call within a batch.
     struct Call {
@@ -124,7 +125,7 @@ contract Atlas is IAtlas {
     function _executeCall(Call calldata callItem) private {
         // address(this) in the contract equals the EOA address NOT the contract address
         (bool success,) = callItem.to.call{value: callItem.value}(callItem.data);
-        require(success, "Call reverted");
+        require(success, CallReverted());
         emit CallExecuted(msg.sender, callItem.to, callItem.value, callItem.data);
     }
 
