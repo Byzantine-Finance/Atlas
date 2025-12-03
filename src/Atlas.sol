@@ -3,7 +3,6 @@ pragma solidity 0.8.30;
 
 interface IAtlas {
     event CallExecuted(address indexed sender, address indexed to, uint256 value, bytes data);
-    event BatchExecuted(uint256 indexed nonce, Call[] calls);
 
     error InvalidSignature();
     error ExpiredSignature();
@@ -62,14 +61,12 @@ contract Atlas is IAtlas {
     */
 
     function _executeBatch(Call[] calldata calls) internal {
-        uint256 currentNonce = nonce;
         nonce++; // Increment nonce to protect against replay attacks
 
         for (uint256 i; i < calls.length; ++i) {
             _executeCall(calls[i]);
         }
 
-        emit BatchExecuted(currentNonce, calls);
     }
 
     function _executeCall(Call calldata callItem) internal {
