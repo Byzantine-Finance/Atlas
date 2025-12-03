@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: UNLICENSE
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 interface IAtlas {
     event CallExecuted(address indexed sender, address indexed to, uint256 value, bytes data);
-    event BatchExecuted(uint256 indexed nonce, Call[] calls);
 
-    error InvalidSignature();
+    error InvalidSigner();
     error ExpiredSignature();
     error Unauthorized();
+    error NonceAlreadyUsed();
+    error CallReverted();
 
     /// @notice Represents a single call within a batch.
     struct Call {
@@ -16,88 +17,115 @@ interface IAtlas {
         bytes data;
     }
 
-    function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external payable;
+    function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
+        external
+        payable;
+    function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
+        external
+        payable;
+    function executeCall(Call calldata call) external payable;
+    function executeCalls(Call[] calldata calls) external payable;
 }
 
 contract Atlas is IAtlas {
-    uint256 public nonce;
-    mapping(address => bool) public sponsors;
-
-    bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
-    address constant OWNER = address(0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e); // bob is owner for the test. NOT READY FOR PROD.
-
     /*
-        Modifiers
+        Storage
     */
 
-    modifier onlyOwner() {
-        require(msg.sender == OWNER, Unauthorized());
-        _;
-    }
+    bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
+    bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
+    bytes32 constant EXECUTE_CALLS_TYPEHASH =
+        keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+    bytes32 constant EXECUTE_CALL_TYPEHASH =
+        keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
-    modifier onlySponsor() {
-        require(sponsors[msg.sender], Unauthorized());
-        _;
-    }
+    mapping(uint256 => bool) public usedNonces;
 
     /*
         External functions
     */
 
-    function execute(Call[] calldata calls, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+    function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
         payable
-        onlySponsor
     {
-        bytes memory encodedCalls;
+        // Verify deadline
+        require(block.timestamp <= deadline, ExpiredSignature());
 
-        // Verify if the execution has not expired
-        require(block.timestamp < deadline, ExpiredSignature());
+        // Verify nonce
+        require(!usedNonces[nonce], NonceAlreadyUsed());
 
-        // Encode the calls to calculate the digest
-        for (uint256 i = 0; i < calls.length; i++) {
-            encodedCalls = abi.encodePacked(encodedCalls, calls[i].to, calls[i].value, calls[i].data);
+        // Retrieve eip-712 digest
+        bytes32 encodeData = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
+        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALL_TYPEHASH, encodeData, deadline, nonce));
+        bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
+
+        // Recover the signer
+        address recoveredAddress = ecrecover(digest, v, r, s);
+        require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
+
+        // Mark the nonce as used
+        usedNonces[nonce] = true;
+
+        _executeCall(call);
+    }
+
+    function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
+        external
+        payable
+    {
+        // Verify deadline
+        require(block.timestamp <= deadline, ExpiredSignature());
+
+        // Verify nonce
+        require(!usedNonces[nonce], NonceAlreadyUsed());
+
+        // Hash each call individually
+        bytes32[] memory callStructHashes = new bytes32[](calls.length);
+        for (uint256 i; i < calls.length; ++i) {
+            callStructHashes[i] =
+                keccak256(abi.encode(CALL_TYPEHASH, calls[i].to, calls[i].value, keccak256(calls[i].data)));
         }
 
-        // EIP 712 compliant message digest. The digest also include the "nonce" and "deadline" to verify the instructions.
-        bytes32 digest = keccak256(
-            abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), keccak256(abi.encodePacked(deadline, nonce, encodedCalls)))
-        );
+        // Retrieve eip-712 digest
+        bytes32 encodeData = keccak256(abi.encodePacked(callStructHashes));
+        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALLS_TYPEHASH, encodeData, deadline, nonce));
+        bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
 
-        // Recover the signer from the provided signature and the digest of the message signed
+        // Recover the signer
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress == address(this), InvalidSignature());
+        require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
+
+        // Mark the nonce as used
+        usedNonces[nonce] = true;
 
         _executeBatch(calls);
     }
 
-    function addSponsor(address sponsor) external onlyOwner {
-        sponsors[sponsor] = true;
+    function executeCall(Call calldata call) external payable {
+        require(msg.sender == address(this), Unauthorized());
+        _executeCall(call);
     }
 
-    function removeSponsor(address sponsor) external onlyOwner {
-        sponsors[sponsor] = false;
+    function executeCalls(Call[] calldata calls) external payable {
+        require(msg.sender == address(this), Unauthorized());
+        _executeBatch(calls);
     }
 
     /*
-        Internal functions
+        Private functions
     */
 
-    function _executeBatch(Call[] calldata calls) internal {
-        uint256 currentNonce = nonce;
-        nonce++; // Increment nonce to protect against replay attacks
-
-        for (uint256 i = 0; i < calls.length; i++) {
+    function _executeBatch(Call[] calldata calls) private {
+        for (uint256 i; i < calls.length; ++i) {
             _executeCall(calls[i]);
         }
-
-        emit BatchExecuted(currentNonce, calls);
     }
 
-    function _executeCall(Call calldata callItem) internal {
+    function _executeCall(Call calldata callItem) private {
         // address(this) in the contract equals the EOA address NOT the contract address
         (bool success,) = callItem.to.call{value: callItem.value}(callItem.data);
-        require(success, "Call reverted");
+        require(success, CallReverted());
         emit CallExecuted(msg.sender, callItem.to, callItem.value, callItem.data);
     }
 
