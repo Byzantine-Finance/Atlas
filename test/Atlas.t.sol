@@ -1,121 +1,137 @@
-// // SPDX-License-Identifier: UNLICENSED
-// pragma solidity 0.8.30;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.30;
 
-// import "forge-std/Test.sol";
-// import "../src/Atlas.sol";
-// import "./Deadcoin.sol";
-// import {console} from "forge-std/console.sol";
+import "forge-std/Test.sol";
+import "../src/Atlas.sol";
+import "./Deadcoin.sol";
+import {console} from "forge-std/console.sol";
 
-// contract AtlasTest is Test {
-//     Atlas public atlas;
-//     Deadcoin public deadcoin;
 
-//     // Alice's address and private key (EOA with no initial contract code).
-//     Vm.Wallet alice = vm.createWallet("alice");
+// Need to copy those constant from Atlas.sol otherwise trying to read them from the contract fail
+bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
+bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
+bytes32 constant EXECUTE_CALLS_TYPEHASH =
+    keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+bytes32 constant EXECUTE_CALL_TYPEHASH =
+    keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
-//     // Bob's address and private key (Bob will execute transactions on Alice's behalf).
-//     Vm.Wallet bob = vm.createWallet("bob");
 
-//     function setUp() public {
-//         atlas = new Atlas();
+contract AtlasTest is Test {
+    Atlas public atlas;
+    Deadcoin public deadcoin;
 
-//         // Alice signs an authorization
-//         Vm.SignedDelegation memory signedDelegation = vm.signDelegation(address(atlas), alice.privateKey);
-//         // Bob send the authorization signed by Alice
-//         vm.broadcast(bob.privateKey);
-//         vm.attachDelegation(signedDelegation);
+    // Alice's address and private key (EOA with no initial contract code).
+    Vm.Wallet alice = vm.createWallet("alice");
 
-//         // We create our ERC20 token
-//         deadcoin = new Deadcoin();
+    // Bob's address and private key (Bob will execute transactions on Alice's behalf).
+    Vm.Wallet bob = vm.createWallet("bob");
 
-//         vm.broadcast(bob.privateKey);
-//         deadcoin.transfer(alice.addr, 100);
+    function setUp() public {
+        atlas = new Atlas();
 
-//         // set bob as sponsor
-//         vm.broadcast(bob.privateKey);
-//     }
+        // Alice signs an authorization
+        Vm.SignedDelegation memory signedDelegation = vm.signDelegation(address(atlas), alice.privateKey);
+        // Bob send the authorization signed by Alice
+        vm.broadcast(bob.privateKey);
+        vm.attachDelegation(signedDelegation);
 
-//     function getDigest(Atlas.Call[] memory calls, uint256 deadline, uint256 nonce)
-//         internal
-//         view
-//         returns (bytes32 digest)
-//     {
-//         bytes memory encodedCalls;
-//         for (uint256 i = 0; i < calls.length; i++) {
-//             encodedCalls = abi.encodePacked(encodedCalls, calls[i].to, calls[i].value, calls[i].data);
-//         }
+        // We create our ERC20 token
+        deadcoin = new Deadcoin();
 
-//         // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
-//         digest = keccak256(
-//             abi.encodePacked(
-//                 hex"1901",
-//                 Atlas(alice.addr).DOMAIN_SEPARATOR(),
-//                 keccak256(abi.encodePacked(deadline, nonce, encodedCalls))
-//             )
-//         );
-//     }
+        vm.broadcast(bob.privateKey);
+        deadcoin.transfer(alice.addr, 100);
 
-//     function test_executeSuccesfull() public {
-//         Atlas.Call memory call = IAtlas.Call({
-//             to: address(deadcoin),
-//             value: 0,
-//             data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
-//         });
-//         Atlas.Call[] memory calls = new IAtlas.Call[](1);
-//         calls[0] = call;
+        // set bob as sponsor
+        vm.startBroadcast(bob.privateKey);
+    }
 
-//         uint256 deadline = block.timestamp + 1;
+    function getDigest(Atlas.Call[] memory calls, uint256 deadline, uint256 cnonce)
+        internal
+        view
+        returns (bytes32 digest)
+    {
 
-//         bytes32 digest = getDigest(calls, deadline, 0);
-//         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+        bytes32[] memory callStructHashes = new bytes32[](calls.length);
+        for (uint256 i; i < calls.length; ++i) {
+            callStructHashes[i] =
+                keccak256(abi.encode(CALL_TYPEHASH, calls[i].to, calls[i].value, keccak256(calls[i].data)));
+        }
 
-//         vm.broadcast(bob.privateKey);
-//         Atlas(alice.addr).execute(calls, deadline, v, r, s);
-//     }
+        // Retrieve eip-712 digest
+        bytes32 encodeData = keccak256(abi.encodePacked(callStructHashes));
+        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALLS_TYPEHASH, encodeData, deadline, cnonce));
 
-//     function test_executeFail() public {
-//         Atlas.Call memory call = IAtlas.Call({
-//             to: address(deadcoin),
-//             value: 0,
-//             data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
-//         });
-//         Atlas.Call[] memory calls = new IAtlas.Call[](1);
-//         calls[0] = call;
+        // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
+        digest = keccak256(
+            abi.encodePacked(
+                hex"1901",
+                Atlas(alice.addr).DOMAIN_SEPARATOR(),
+                hashStruct
+            )
+        );
+    }
 
-//         uint256 deadline = block.timestamp + 1;
+    function test_executeSuccesfull() public {
+        Atlas.Call memory call = IAtlas.Call({
+            to: address(deadcoin),
+            value: 0,
+            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+        });
+        Atlas.Call[] memory calls = new IAtlas.Call[](1);
+        calls[0] = call;
 
-//         bytes32 digest = getDigest(calls, deadline, 0);
-//         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+        uint256 deadline = block.timestamp + 1;
+        // uint256 cnonce = vm.randomUint();
+        uint256 cnonce = 0;
 
-//         // tempered r
-//         r = bytes32(0);
+        bytes32 digest = getDigest(calls, deadline, cnonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
-//         vm.expectRevert(); // Expect to revert because of the wrong value in the call (invalid signature)
+        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+    }
 
-//         vm.broadcast(bob.privateKey);
-//         Atlas(alice.addr).execute(calls, deadline, v, r, s);
-//     }
+    function test_executeFail() public {
+        Atlas.Call memory call = IAtlas.Call({
+            to: address(deadcoin),
+            value: 0,
+            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+        });
+        Atlas.Call[] memory calls = new IAtlas.Call[](1);
+        calls[0] = call;
 
-//     function test_replayFail() public {
-//         Atlas.Call memory call = IAtlas.Call({
-//             to: address(deadcoin),
-//             value: 0,
-//             data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
-//         });
-//         Atlas.Call[] memory calls = new IAtlas.Call[](1);
-//         calls[0] = call;
+        uint256 deadline = block.timestamp + 1;
+        uint256 cnonce = vm.randomUint();
 
-//         uint256 deadline = block.timestamp + 1;
+        bytes32 digest = getDigest(calls, deadline, cnonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
-//         bytes32 digest = getDigest(calls, deadline, 0);
-//         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+        // tempered r
+        r = bytes32(0);
 
-//         vm.broadcast(bob.privateKey);
-//         Atlas(alice.addr).execute(calls, deadline, v, r, s);
+        vm.expectRevert(); // Expect to revert because of the wrong value in the call (invalid signature)
 
-//         vm.expectRevert(); // we should not be able to resend the same call signed
+        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+    }
 
-//         vm.broadcast(bob.privateKey);
-//         Atlas(alice.addr).execute(calls, deadline, v, r, s);
-//     }
-// }
+    function test_replayFail() public {
+        Atlas.Call memory call = IAtlas.Call({
+            to: address(deadcoin),
+            value: 0,
+            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+        });
+        Atlas.Call[] memory calls = new IAtlas.Call[](1);
+        calls[0] = call;
+
+        uint256 deadline = block.timestamp + 1;
+        uint256 cnonce = vm.randomUint();
+
+        bytes32 digest = getDigest(calls, deadline, cnonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+
+        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+
+        vm.expectRevert(); // we should not be able to resend the same call signed
+
+        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+    }
+}
