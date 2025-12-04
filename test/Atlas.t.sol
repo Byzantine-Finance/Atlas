@@ -147,7 +147,7 @@ contract AtlasTest is Test {
 
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
-        // Check balance hasn't changed        
+        // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 100);
     }
@@ -174,7 +174,7 @@ contract AtlasTest is Test {
 
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
-        // Check balance has only decreased by 10  
+        // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 90);
     }
@@ -189,7 +189,7 @@ contract AtlasTest is Test {
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
-        uint256 deadline = block.timestamp -1;
+        uint256 deadline = block.timestamp - 1;
         uint256 cnonce = vm.randomUint();
 
         bytes32 digest = getDigest(calls, deadline, cnonce);
@@ -198,7 +198,7 @@ contract AtlasTest is Test {
         vm.expectRevert();
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
-        // Check balance hasn't changed        
+        // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 100);
     }
@@ -219,7 +219,7 @@ contract AtlasTest is Test {
 
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
-        // Check balance has decreased  
+        // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 90);
     }
@@ -232,7 +232,7 @@ contract AtlasTest is Test {
             data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
         });
 
-        uint256 deadline = block.timestamp -1;
+        uint256 deadline = block.timestamp - 1;
         uint256 cnonce = vm.randomUint();
 
         bytes32 digest = getDigest(call, deadline, cnonce);
@@ -244,7 +244,7 @@ contract AtlasTest is Test {
         vm.expectRevert();
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
-        // Check balance hasn't changed        
+        // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 100);
     }
@@ -328,5 +328,4 @@ contract AtlasTest is Test {
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 100);
     }
-
 }
