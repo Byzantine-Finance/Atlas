@@ -6,7 +6,6 @@ import "../src/Atlas.sol";
 import "./Deadcoin.sol";
 import {console} from "forge-std/console.sol";
 
-
 // Need to copy those constant from Atlas.sol otherwise trying to read them from the contract fail
 bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
 bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
@@ -14,7 +13,6 @@ bytes32 constant EXECUTE_CALLS_TYPEHASH =
     keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 bytes32 constant EXECUTE_CALL_TYPEHASH =
     keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
-
 
 contract AtlasTest is Test {
     Atlas public atlas;
@@ -50,7 +48,6 @@ contract AtlasTest is Test {
         view
         returns (bytes32 digest)
     {
-
         bytes32[] memory callStructHashes = new bytes32[](calls.length);
         for (uint256 i; i < calls.length; ++i) {
             callStructHashes[i] =
@@ -62,13 +59,7 @@ contract AtlasTest is Test {
         bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALLS_TYPEHASH, encodeData, deadline, cnonce));
 
         // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
-        digest = keccak256(
-            abi.encodePacked(
-                hex"1901",
-                Atlas(alice.addr).DOMAIN_SEPARATOR(),
-                hashStruct
-            )
-        );
+        digest = keccak256(abi.encodePacked(hex"1901", Atlas(alice.addr).DOMAIN_SEPARATOR(), hashStruct));
     }
 
     function test_executeSuccesfull() public {
