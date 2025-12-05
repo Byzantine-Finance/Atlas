@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 interface IAtlas {
     event CallExecuted(address indexed sender, address indexed to, uint256 value, bytes data);
 
@@ -61,7 +63,7 @@ contract Atlas is IAtlas {
         bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
 
         // Recover the signer
-        address recoveredAddress = ecrecover(digest, v, r, s);
+        address recoveredAddress = ECDSA.recover(digest, v, r, s);
         require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
@@ -93,7 +95,7 @@ contract Atlas is IAtlas {
         bytes32 digest = keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR(), hashStruct));
 
         // Recover the signer
-        address recoveredAddress = ecrecover(digest, v, r, s);
+        address recoveredAddress = ECDSA.recover(digest, v, r, s);
         require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
