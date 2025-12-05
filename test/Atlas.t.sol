@@ -33,17 +33,14 @@ contract AtlasTest is Test {
         // Alice signs an authorization
         Vm.SignedDelegation memory signedDelegation = vm.signDelegation(address(atlas), alice.privateKey);
         // Bob send the authorization signed by Alice
-        vm.broadcast(bob.privateKey);
+        vm.prank(bob.addr);
         vm.attachDelegation(signedDelegation);
 
         // We create our ERC20 token
         deadcoin = new Deadcoin();
 
-        vm.broadcast(bob.privateKey);
+        vm.prank(bob.addr);
         deadcoin.transfer(alice.addr, 100);
-
-        // set bob as sponsor
-        vm.startBroadcast(bob.privateKey);
     }
 
     // Utilitary function to get the digest of several calls
@@ -96,6 +93,7 @@ contract AtlasTest is Test {
         bytes32 digest = getDigest(calls, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance has decreased
@@ -120,6 +118,7 @@ contract AtlasTest is Test {
         bytes32 digest = getDigest(calls, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance has decreased
@@ -145,6 +144,7 @@ contract AtlasTest is Test {
 
         vm.expectRevert(IAtlas.InvalidSigner.selector);
 
+        vm.prank(charlie.addr);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
@@ -168,10 +168,12 @@ contract AtlasTest is Test {
         bytes32 digest = getDigest(calls, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         vm.expectRevert(IAtlas.NonceAlreadyUsed.selector);
 
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance has only decreased by 10
@@ -197,6 +199,7 @@ contract AtlasTest is Test {
 
         skip(2);
         vm.expectRevert(IAtlas.ExpiredSignature.selector);
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
@@ -218,6 +221,7 @@ contract AtlasTest is Test {
         bytes32 digest = getDigest(call, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance has decreased
@@ -240,6 +244,7 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(charlie, digest);
 
         vm.expectRevert(IAtlas.InvalidSigner.selector);
+        vm.prank(charlie.addr);
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
@@ -261,9 +266,11 @@ contract AtlasTest is Test {
         bytes32 digest = getDigest(call, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         vm.expectRevert(IAtlas.NonceAlreadyUsed.selector);
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance has only decreased by 10
@@ -279,8 +286,7 @@ contract AtlasTest is Test {
             data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
 
-        vm.stopBroadcast();
-        vm.broadcast(alice.privateKey);
+        vm.prank(alice.addr);
         Atlas(alice.addr).executeCall(call);
 
         // Check balance has only decreased by 10
@@ -299,8 +305,7 @@ contract AtlasTest is Test {
         calls[0] = call;
         calls[1] = call;
 
-        vm.stopBroadcast();
-        vm.broadcast(alice.privateKey);
+        vm.prank(alice.addr);
         Atlas(alice.addr).executeCalls(calls);
 
         // Check balance has decreased
@@ -320,9 +325,11 @@ contract AtlasTest is Test {
         calls[1] = call;
 
         vm.expectRevert(IAtlas.Unauthorized.selector);
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCalls(calls);
 
         vm.expectRevert(IAtlas.Unauthorized.selector);
+        vm.prank(bob.addr);
         Atlas(alice.addr).executeCall(call);
 
         // Check balance not have changed
