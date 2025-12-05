@@ -79,11 +79,8 @@ contract AtlasTest is Test {
 
     // Sucess calls execution with one call
     function test_executeSuccesfull() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -103,11 +100,8 @@ contract AtlasTest is Test {
 
     // Sucess calls execution with two calls
     function test_executeSuccesfullMulticalls() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
@@ -128,11 +122,8 @@ contract AtlasTest is Test {
 
     // Sending the wrong signature
     function test_executeFail() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -154,11 +145,8 @@ contract AtlasTest is Test {
 
     // Replaying the same call twice with the same signature
     function test_replayFail() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -183,11 +171,8 @@ contract AtlasTest is Test {
 
     // Sending expired call with correct signature so the call should fail
     function test_expiredDeadline() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -209,11 +194,8 @@ contract AtlasTest is Test {
 
     // Sucessfully call `executeCall` with a simple call
     function test_simpleCall() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
 
         uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
@@ -231,13 +213,10 @@ contract AtlasTest is Test {
 
     // Send an invalid signature with our simple call
     function test_simpleCallInvalidSignature() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
 
-        uint256 deadline = block.timestamp +1;
+        uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
 
         bytes32 digest = getDigest(call, deadline, cnonce);
@@ -254,11 +233,8 @@ contract AtlasTest is Test {
 
     // Send an invalid signature with our simple call
     function test_simpleCallReplayFail() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
 
         uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
@@ -280,11 +256,8 @@ contract AtlasTest is Test {
 
     // Alice can call her own EOA code should be sucessful
     function test_executeOwnCall() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
 
         vm.prank(alice.addr);
         Atlas(alice.addr).executeCall(call);
@@ -296,11 +269,8 @@ contract AtlasTest is Test {
 
     // Alice can call her own EOA code should be sucessful with multiple calls
     function test_executeOwnCallMultipleCalls() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
@@ -315,11 +285,8 @@ contract AtlasTest is Test {
 
     // Bob should not be able to call Alice's function without her signature
     function test_bobFailCall() public {
-        Atlas.Call memory call = IAtlas.Call({
-            to: address(deadcoin),
-            value: 0,
-            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
-        });
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
