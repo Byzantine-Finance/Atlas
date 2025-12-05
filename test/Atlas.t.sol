@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
@@ -23,6 +23,9 @@ contract AtlasTest is Test {
 
     // Bob's address and private key (Bob will execute transactions on Alice's behalf).
     Vm.Wallet bob = vm.createWallet("bob");
+
+    // Charlie's address and private key (Charlie will try to call Alice's function without her signature).
+    Vm.Wallet charlie = vm.createWallet("charlie");
 
     function setUp() public {
         atlas = new Atlas();
@@ -82,7 +85,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
@@ -105,7 +108,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
@@ -129,7 +132,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
@@ -138,12 +141,9 @@ contract AtlasTest is Test {
         uint256 cnonce = vm.randomUint();
 
         bytes32 digest = getDigest(calls, deadline, cnonce);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(charlie, digest);
 
-        // tempered r
-        r = bytes32(0);
-
-        vm.expectRevert(); // Expect to revert because of the wrong value in the call (invalid signature)
+        vm.expectRevert(IAtlas.InvalidSigner.selector);
 
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
@@ -157,7 +157,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
@@ -170,7 +170,7 @@ contract AtlasTest is Test {
 
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
-        vm.expectRevert(); // we should not be able to resend the same call signed
+        vm.expectRevert(IAtlas.NonceAlreadyUsed.selector);
 
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
@@ -184,18 +184,19 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
-        uint256 deadline = block.timestamp - 1;
+        uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
 
         bytes32 digest = getDigest(calls, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
-        vm.expectRevert();
+        skip(2);
+        vm.expectRevert(IAtlas.ExpiredSignature.selector);
         Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
@@ -208,7 +209,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
 
         uint256 deadline = block.timestamp + 1;
@@ -229,19 +230,16 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
 
-        uint256 deadline = block.timestamp - 1;
+        uint256 deadline = block.timestamp +1;
         uint256 cnonce = vm.randomUint();
 
         bytes32 digest = getDigest(call, deadline, cnonce);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(charlie, digest);
 
-        // tempered s
-        s = bytes32(0);
-
-        vm.expectRevert();
+        vm.expectRevert(IAtlas.InvalidSigner.selector);
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
@@ -254,7 +252,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
 
         uint256 deadline = block.timestamp + 1;
@@ -265,7 +263,7 @@ contract AtlasTest is Test {
 
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
-        vm.expectRevert(); // we should not be able to resend the same call signed
+        vm.expectRevert(IAtlas.NonceAlreadyUsed.selector);
         Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance has only decreased by 10
@@ -278,7 +276,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
 
         vm.stopBroadcast();
@@ -295,7 +293,7 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
@@ -315,14 +313,17 @@ contract AtlasTest is Test {
         Atlas.Call memory call = IAtlas.Call({
             to: address(deadcoin),
             value: 0,
-            data: hex"a9059cbb00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000000000000000000000000000000000000000000a"
+            data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))
         });
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
 
-        vm.expectRevert();
+        vm.expectRevert(IAtlas.Unauthorized.selector);
         Atlas(alice.addr).executeCalls(calls);
+
+        vm.expectRevert(IAtlas.Unauthorized.selector);
+        Atlas(alice.addr).executeCall(call);
 
         // Check balance not have changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
