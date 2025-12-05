@@ -303,4 +303,14 @@ contract AtlasTest is Test {
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == 100);
     }
+
+    // Alice can't call an unexisting function
+    function test_executeCallReverted() public {
+        Atlas.Call memory call =
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeWithSignature("nonExistentFunction()")});
+
+        vm.expectRevert(IAtlas.CallReverted.selector);
+        vm.prank(alice.addr);
+        Atlas(alice.addr).executeCall(call);
+    }
 }
