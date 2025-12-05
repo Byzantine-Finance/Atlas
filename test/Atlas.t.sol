@@ -18,6 +18,9 @@ contract AtlasTest is Test {
     Atlas public atlas;
     Deadcoin public deadcoin;
 
+    // Initial Deadcoin balance for Alice
+    uint256 constant INITIAL_AMOUNT = 100;
+
     // Alice's address and private key (EOA with no initial contract code).
     Vm.Wallet alice = vm.createWallet("alice");
 
@@ -40,7 +43,7 @@ contract AtlasTest is Test {
         deadcoin = new Deadcoin();
 
         vm.prank(bob.addr);
-        deadcoin.transfer(alice.addr, 100);
+        deadcoin.transfer(alice.addr, INITIAL_AMOUNT);
     }
 
     // Utilitary function to get the digest of several calls
@@ -78,9 +81,11 @@ contract AtlasTest is Test {
     }
 
     // Sucess calls execution with one call
-    function test_executeSuccesfull() public {
+    function test_executeSuccesfull(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -95,13 +100,15 @@ contract AtlasTest is Test {
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 90);
+        assert(balance == INITIAL_AMOUNT - amount);
     }
 
     // Sucess calls execution with two calls
-    function test_executeSuccesfullMulticalls() public {
+    function test_executeSuccesfullMulticalls(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT / 2);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
@@ -117,13 +124,15 @@ contract AtlasTest is Test {
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 80);
+        assert(balance == INITIAL_AMOUNT - (2 * amount));
     }
 
     // Sending the wrong signature
-    function test_executeFail() public {
+    function test_executeFail(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -140,13 +149,15 @@ contract AtlasTest is Test {
 
         // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 100);
+        assert(balance == INITIAL_AMOUNT);
     }
 
     // Replaying the same call twice with the same signature
-    function test_replayFail() public {
+    function test_replayFail(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -166,13 +177,15 @@ contract AtlasTest is Test {
 
         // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 90);
+        assert(balance == INITIAL_AMOUNT - amount);
     }
 
     // Sending expired call with correct signature so the call should fail
-    function test_expiredDeadline() public {
+    function test_expiredDeadline(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](1);
         calls[0] = call;
 
@@ -189,13 +202,15 @@ contract AtlasTest is Test {
 
         // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 100);
+        assert(balance == INITIAL_AMOUNT);
     }
 
     // Sucessfully call `executeCall` with a simple call
-    function test_simpleCall() public {
+    function test_simpleCall(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
 
         uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
@@ -208,13 +223,15 @@ contract AtlasTest is Test {
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 90);
+        assert(balance == INITIAL_AMOUNT - amount);
     }
 
     // Send an invalid signature with our simple call
-    function test_simpleCallInvalidSignature() public {
+    function test_simpleCallInvalidSignature(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
 
         uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
@@ -228,13 +245,15 @@ contract AtlasTest is Test {
 
         // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 100);
+        assert(balance == INITIAL_AMOUNT);
     }
 
     // Send an invalid signature with our simple call
-    function test_simpleCallReplayFail() public {
+    function test_simpleCallReplayFail(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
 
         uint256 deadline = block.timestamp + 1;
         uint256 cnonce = vm.randomUint();
@@ -251,26 +270,30 @@ contract AtlasTest is Test {
 
         // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 90);
+        assert(balance == INITIAL_AMOUNT - amount);
     }
 
     // Alice can call her own EOA code should be sucessful
-    function test_executeOwnCall() public {
+    function test_executeOwnCall(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
 
         vm.prank(alice.addr);
         Atlas(alice.addr).executeCall(call);
 
         // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 90);
+        assert(balance == INITIAL_AMOUNT - amount);
     }
 
     // Alice can call her own EOA code should be sucessful with multiple calls
-    function test_executeOwnCallMultipleCalls() public {
+    function test_executeOwnCallMultipleCalls(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT / 2);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
@@ -280,13 +303,15 @@ contract AtlasTest is Test {
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 80);
+        assert(balance == INITIAL_AMOUNT - (2 * amount));
     }
 
     // Bob should not be able to call Alice's function without her signature
-    function test_bobFailCall() public {
+    function test_bobFailCall(uint256 amount) public {
+        vm.assume(amount <= INITIAL_AMOUNT);
+
         Atlas.Call memory call =
-            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, 10))});
+            IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
         Atlas.Call[] memory calls = new IAtlas.Call[](2);
         calls[0] = call;
         calls[1] = call;
@@ -301,7 +326,7 @@ contract AtlasTest is Test {
 
         // Check balance not have changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
-        assert(balance == 100);
+        assert(balance == INITIAL_AMOUNT);
     }
 
     // Alice can't call an unexisting function
