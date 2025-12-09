@@ -4,7 +4,6 @@ pragma solidity 0.8.30;
 import "forge-std/Test.sol";
 import "../src/Atlas.sol";
 import "./Deadcoin.sol";
-import {console} from "forge-std/console.sol";
 
 // Need to copy those constant from Atlas.sol otherwise trying to read them from the contract fail
 bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
@@ -336,5 +335,23 @@ contract AtlasTest is Test {
         vm.expectRevert(IAtlas.CallReverted.selector);
         vm.prank(alice.addr);
         Atlas(alice.addr).executeCall(call);
+    }
+
+    // Test that the isValidSignature function returns the correct selector if hash signed by alice
+    function test_isValidSignature(bytes32 hash) public {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        bytes4 result = Atlas(alice.addr).isValidSignature(hash, signature);
+        assert(result == IERC1271.isValidSignature.selector);
+    }
+
+    // Test that the isValidSignature function returns 0 if the hash is not signed by alice
+    function test_isValidSignature_notVerified(bytes32 hash) public {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        bytes4 result = Atlas(alice.addr).isValidSignature(hash, signature);
+        assert(result != IERC1271.isValidSignature.selector);
     }
 }
