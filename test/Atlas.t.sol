@@ -5,13 +5,6 @@ import "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import "forge-std/Test.sol";
 import "../src/Atlas.sol";
 
-// Need to copy those constant from Atlas.sol otherwise trying to read them from the contract fail
-bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
-bytes32 constant EXECUTE_CALLS_TYPEHASH =
-    keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
-bytes32 constant EXECUTE_CALL_TYPEHASH =
-    keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
-
 contract AtlasTest is Test {
     Atlas public atlas;
     ERC20Mock public deadcoin;
@@ -53,12 +46,12 @@ contract AtlasTest is Test {
         bytes32[] memory callStructHashes = new bytes32[](calls.length);
         for (uint256 i; i < calls.length; ++i) {
             callStructHashes[i] =
-                keccak256(abi.encode(CALL_TYPEHASH, calls[i].to, calls[i].value, keccak256(calls[i].data)));
+                keccak256(abi.encode(atlas.CALL_TYPEHASH(), calls[i].to, calls[i].value, keccak256(calls[i].data)));
         }
 
         // Retrieve eip-712 digest
         bytes32 encodeData = keccak256(abi.encodePacked(callStructHashes));
-        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALLS_TYPEHASH, encodeData, deadline, cnonce));
+        bytes32 hashStruct = keccak256(abi.encode(atlas.EXECUTE_CALLS_TYPEHASH(), encodeData, deadline, cnonce));
 
         // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
         digest = keccak256(abi.encodePacked(hex"1901", Atlas(alice.addr).DOMAIN_SEPARATOR(), hashStruct));
@@ -71,8 +64,8 @@ contract AtlasTest is Test {
         returns (bytes32 digest)
     {
         // Retrieve eip-712 digest
-        bytes32 encodeData = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
-        bytes32 hashStruct = keccak256(abi.encode(EXECUTE_CALL_TYPEHASH, encodeData, deadline, cnonce));
+        bytes32 encodeData = keccak256(abi.encode(atlas.CALL_TYPEHASH(), call.to, call.value, keccak256(call.data)));
+        bytes32 hashStruct = keccak256(abi.encode(atlas.EXECUTE_CALL_TYPEHASH(), encodeData, deadline, cnonce));
 
         // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
         digest = keccak256(abi.encodePacked(hex"1901", Atlas(alice.addr).DOMAIN_SEPARATOR(), hashStruct));

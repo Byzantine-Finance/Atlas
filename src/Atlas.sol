@@ -47,15 +47,16 @@ contract Atlas is IAtlas, IERC1271 {
         Storage
     */
 
-    bytes32 constant DOMAIN_TYPEHASH =
+    bytes32 public constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 public constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
+    bytes32 public constant EXECUTE_CALLS_TYPEHASH =
+        keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+    bytes32 public constant EXECUTE_CALL_TYPEHASH =
+        keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+
     bytes32 constant NAME_HASH = keccak256("Byzantine");
     bytes32 constant VERSION_HASH = keccak256("1");
-    bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
-    bytes32 constant EXECUTE_CALLS_TYPEHASH =
-        keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
-    bytes32 constant EXECUTE_CALL_TYPEHASH =
-        keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
     // keccak256(abi.encode(uint256(keccak256("byzantine.storage.atlas")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ATLAS_STORAGE_LOCATION =
