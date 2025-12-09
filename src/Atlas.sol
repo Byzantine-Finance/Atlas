@@ -29,7 +29,20 @@ interface IAtlas {
     function executeCalls(Call[] calldata calls) external payable;
 }
 
-contract Atlas is IAtlas {
+/**
+ * @dev Interface of the ERC-1271 standard signature validation method for
+ * contracts as defined in https://eips.ethereum.org/EIPS/eip-1271[ERC-1271].
+ */
+interface IERC1271 {
+    /**
+     * @dev Should return whether the signature provided is valid for the provided data
+     * @param hash      Hash of the data to be signed
+     * @param signature Signature byte array associated with `hash`
+     */
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4);
+}
+
+contract Atlas is IAtlas, IERC1271 {
     /*
         Storage
     */
@@ -115,6 +128,10 @@ contract Atlas is IAtlas {
     function executeCalls(Call[] calldata calls) external payable {
         require(msg.sender == address(this), Unauthorized());
         _executeBatch(calls);
+    }
+
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+        return ECDSA.recover(hash, signature) == address(this) ? this.isValidSignature.selector : bytes4(0);
     }
 
     /*
