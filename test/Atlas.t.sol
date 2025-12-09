@@ -7,7 +7,6 @@ import "./Deadcoin.sol";
 import {console} from "forge-std/console.sol";
 
 // Need to copy those constant from Atlas.sol otherwise trying to read them from the contract fail
-bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
 bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
 bytes32 constant EXECUTE_CALLS_TYPEHASH =
     keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");

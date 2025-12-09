@@ -34,7 +34,10 @@ contract Atlas is IAtlas {
         Storage
     */
 
-    bytes32 constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(uint256 chainId,address verifyingContract)");
+    bytes32 constant DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 constant NAME_HASH = keccak256("Byzantine");
+    bytes32 constant VERSION_HASH = keccak256("1");
     bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
     bytes32 constant EXECUTE_CALLS_TYPEHASH =
         keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
@@ -136,6 +139,6 @@ contract Atlas is IAtlas {
     */
 
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
-        return keccak256(abi.encode(DOMAIN_TYPEHASH, block.chainid, address(this)));
+        return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 }
