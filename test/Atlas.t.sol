@@ -99,6 +99,9 @@ contract AtlasTest is Test {
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == INITIAL_AMOUNT - amount);
+
+        // Check nonce is marked as used
+        assert(Atlas(alice.addr).usedNonces(cnonce));
     }
 
     // Sucess calls execution with two calls

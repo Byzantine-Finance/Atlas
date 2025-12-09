@@ -57,7 +57,16 @@ contract Atlas is IAtlas, IERC1271 {
     bytes32 constant EXECUTE_CALL_TYPEHASH =
         keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
-    mapping(uint256 => bool) public usedNonces;
+    // keccak256(abi.encode(uint256(keccak256("byzantine.storage.atlas")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ATLAS_STORAGE_LOCATION =
+        0x286cc92cf59df7ea6ce1672c834529dc58b6f4cac9788e59bd7a7ceae9de7600;
+
+    /// @custom:storage-location erc7201:byzantine.storage.atlas
+    struct AtlasStorage {
+        /// @notice Mapping of used nonces (true if already used)
+        /// @dev Used to prevent replay attacks
+        mapping(uint256 => bool) usedNonces;
+    }
 
     /*
         External functions
@@ -67,11 +76,13 @@ contract Atlas is IAtlas, IERC1271 {
         external
         payable
     {
+        AtlasStorage storage $ = _getAtlasStorage();
+
         // Verify deadline
         require(block.timestamp <= deadline, ExpiredSignature());
 
         // Verify nonce
-        require(!usedNonces[nonce], NonceAlreadyUsed());
+        require(!$.usedNonces[nonce], NonceAlreadyUsed());
 
         // Retrieve eip-712 digest
         bytes32 encodeData = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
@@ -83,7 +94,7 @@ contract Atlas is IAtlas, IERC1271 {
         require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
-        usedNonces[nonce] = true;
+        $.usedNonces[nonce] = true;
 
         _executeCall(call);
     }
@@ -92,11 +103,13 @@ contract Atlas is IAtlas, IERC1271 {
         external
         payable
     {
+        AtlasStorage storage $ = _getAtlasStorage();
+
         // Verify deadline
         require(block.timestamp <= deadline, ExpiredSignature());
 
         // Verify nonce
-        require(!usedNonces[nonce], NonceAlreadyUsed());
+        require(!$.usedNonces[nonce], NonceAlreadyUsed());
 
         // Hash each call individually
         bytes32[] memory callStructHashes = new bytes32[](calls.length);
@@ -115,7 +128,7 @@ contract Atlas is IAtlas, IERC1271 {
         require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
-        usedNonces[nonce] = true;
+        $.usedNonces[nonce] = true;
 
         _executeBatch(calls);
     }
@@ -151,11 +164,21 @@ contract Atlas is IAtlas, IERC1271 {
         emit CallExecuted(msg.sender, callItem.to, callItem.value, callItem.data);
     }
 
+    function _getAtlasStorage() private pure returns (AtlasStorage storage $) {
+        assembly {
+            $.slot := ATLAS_STORAGE_LOCATION
+        }
+    }
+
     /*
         Views
     */
 
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
+    }
+
+    function usedNonces(uint256 nonce) public view returns (bool) {
+        return _getAtlasStorage().usedNonces[nonce];
     }
 }
