@@ -58,7 +58,8 @@ contract Atlas is IAtlas, IERC1271 {
         keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
     // keccak256(abi.encode(uint256(keccak256("byzantine.storage.atlas")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant ATLAS_STORAGE_LOCATION = 0x286cc92cf59df7ea6ce1672c834529dc58b6f4cac9788e59bd7a7ceae9de7600;
+    bytes32 private constant ATLAS_STORAGE_LOCATION =
+        0x286cc92cf59df7ea6ce1672c834529dc58b6f4cac9788e59bd7a7ceae9de7600;
 
     /// @custom:storage-location erc7201:byzantine.storage.atlas
     struct AtlasStorage {
