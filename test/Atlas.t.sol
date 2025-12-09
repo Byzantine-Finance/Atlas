@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import "forge-std/Test.sol";
 import "../src/Atlas.sol";
-import "./Deadcoin.sol";
 
 // Need to copy those constant from Atlas.sol otherwise trying to read them from the contract fail
 bytes32 constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
@@ -14,9 +14,9 @@ bytes32 constant EXECUTE_CALL_TYPEHASH =
 
 contract AtlasTest is Test {
     Atlas public atlas;
-    Deadcoin public deadcoin;
+    ERC20Mock public deadcoin;
 
-    // Initial Deadcoin balance for Alice
+    // Initial ERC20Mock balance for Alice
     uint256 constant INITIAL_AMOUNT = 100;
 
     // Alice's address and private key (EOA with no initial contract code).
@@ -37,11 +37,11 @@ contract AtlasTest is Test {
         vm.prank(bob.addr);
         vm.attachDelegation(signedDelegation);
 
-        // We create our ERC20 token
-        deadcoin = new Deadcoin();
+        // Create an ERC20 Mock token
+        deadcoin = new ERC20Mock();
 
-        vm.prank(bob.addr);
-        deadcoin.transfer(alice.addr, INITIAL_AMOUNT);
+        // Mint initial balance to Alice
+        deadcoin.mint(alice.addr, INITIAL_AMOUNT);
     }
 
     // Utilitary function to get the digest of several calls
