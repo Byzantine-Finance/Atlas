@@ -225,6 +225,10 @@ contract AtlasTest is Test {
         bytes32 digest = getDigest(call, deadline, cnonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
+        // Should emit CallExecuted event
+        vm.expectEmit();
+        emit IAtlas.CallExecuted(bob.addr, address(deadcoin), abi.encode(true));
+
         vm.prank(bob.addr);
         IAtlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 

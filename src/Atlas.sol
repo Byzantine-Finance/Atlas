@@ -18,7 +18,7 @@ interface IERC1271 {
 }
 
 interface IAtlas is IERC1271 {
-    event CallExecuted(address indexed sender, address indexed to, uint256 value, bytes data);
+    event CallExecuted(address indexed sender, address indexed to, bytes returnData);
 
     error InvalidSigner();
     error ExpiredSignature();
@@ -160,10 +160,9 @@ contract Atlas is Receiver, IAtlas {
     }
 
     function _executeCall(Call calldata callItem) private {
-        // address(this) in the contract equals the EOA address NOT the contract address
-        (bool success,) = callItem.to.call{value: callItem.value}(callItem.data);
+        (bool success, bytes memory returndata) = callItem.to.call{value: callItem.value}(callItem.data);
         require(success, CallReverted());
-        emit CallExecuted(msg.sender, callItem.to, callItem.value, callItem.data);
+        emit CallExecuted(msg.sender, callItem.to, returndata);
     }
 
     function _getAtlasStorage() private pure returns (AtlasStorage storage $) {
