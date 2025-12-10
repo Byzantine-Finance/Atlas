@@ -2,8 +2,21 @@
 pragma solidity 0.8.30;
 
 import "@solady-test/utils/mocks/MockERC20.sol";
+import "@solady-test/utils/mocks/MockERC721.sol";
+import "@solady-test/utils/mocks/MockERC1155.sol";
 import "forge-std/Test.sol";
 import "../src/Atlas.sol";
+
+contract EtherSenderContract {
+    error FailedToSendEther();
+
+    receive() external payable {}
+
+    function sendEther(address to, uint256 amount) external {
+        (bool success,) = to.call{value: amount}("");
+        require(success, FailedToSendEther());
+    }
+}
 
 contract AtlasTest is Test {
     Atlas public atlas;
@@ -53,8 +66,8 @@ contract AtlasTest is Test {
         bytes32 encodeData = keccak256(abi.encodePacked(callStructHashes));
         bytes32 hashStruct = keccak256(abi.encode(atlas.EXECUTE_CALLS_TYPEHASH(), encodeData, deadline, cnonce));
 
-        // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
-        digest = keccak256(abi.encodePacked(hex"1901", Atlas(alice.addr).DOMAIN_SEPARATOR(), hashStruct));
+        // IMPORTANT!! `Atlas(payable(alice.addr)).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
+        digest = keccak256(abi.encodePacked(hex"1901", Atlas(payable(alice.addr)).DOMAIN_SEPARATOR(), hashStruct));
     }
 
     // Utilitary function to get the digest of one single call
@@ -67,8 +80,8 @@ contract AtlasTest is Test {
         bytes32 encodeData = keccak256(abi.encode(atlas.CALL_TYPEHASH(), call.to, call.value, keccak256(call.data)));
         bytes32 hashStruct = keccak256(abi.encode(atlas.EXECUTE_CALL_TYPEHASH(), encodeData, deadline, cnonce));
 
-        // IMPORTANT!! `Atlas(alice.addr).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
-        digest = keccak256(abi.encodePacked(hex"1901", Atlas(alice.addr).DOMAIN_SEPARATOR(), hashStruct));
+        // IMPORTANT!! `Atlas(payable(alice.addr)).DOMAIN_SEPARATOR()` need ot be called from alice bytecodes because it doesn't have the same address as the atlas deployed one.
+        digest = keccak256(abi.encodePacked(hex"1901", Atlas(payable(alice.addr)).DOMAIN_SEPARATOR(), hashStruct));
     }
 
     // Sucess calls execution with one call
@@ -87,14 +100,14 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
         assert(balance == INITIAL_AMOUNT - amount);
 
         // Check nonce is marked as used
-        assert(Atlas(alice.addr).usedNonces(cnonce));
+        assert(Atlas(payable(alice.addr)).usedNonces(cnonce));
     }
 
     // Sucess calls execution with two calls
@@ -114,7 +127,7 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -139,7 +152,7 @@ contract AtlasTest is Test {
         vm.expectRevert(IAtlas.InvalidSigner.selector);
 
         vm.prank(charlie.addr);
-        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -162,12 +175,12 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         vm.expectRevert(IAtlas.NonceAlreadyUsed.selector);
 
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -192,7 +205,7 @@ contract AtlasTest is Test {
         skip(2);
         vm.expectRevert(IAtlas.ExpiredSignature.selector);
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCalls(calls, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -213,7 +226,7 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -235,7 +248,7 @@ contract AtlasTest is Test {
 
         vm.expectRevert(IAtlas.InvalidSigner.selector);
         vm.prank(charlie.addr);
-        Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance hasn't changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -256,11 +269,11 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
 
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         vm.expectRevert(IAtlas.NonceAlreadyUsed.selector);
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
+        IAtlas(alice.addr).executeCall(call, deadline, cnonce, v, r, s);
 
         // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -275,7 +288,7 @@ contract AtlasTest is Test {
             IAtlas.Call({to: address(deadcoin), value: 0, data: abi.encodeCall(deadcoin.transfer, (bob.addr, amount))});
 
         vm.prank(alice.addr);
-        Atlas(alice.addr).executeCall(call);
+        IAtlas(alice.addr).executeCall(call);
 
         // Check balance has only decreased by 10
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -293,7 +306,7 @@ contract AtlasTest is Test {
         calls[1] = call;
 
         vm.prank(alice.addr);
-        Atlas(alice.addr).executeCalls(calls);
+        IAtlas(alice.addr).executeCalls(calls);
 
         // Check balance has decreased
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -312,11 +325,11 @@ contract AtlasTest is Test {
 
         vm.expectRevert(IAtlas.Unauthorized.selector);
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCalls(calls);
+        IAtlas(alice.addr).executeCalls(calls);
 
         vm.expectRevert(IAtlas.Unauthorized.selector);
         vm.prank(bob.addr);
-        Atlas(alice.addr).executeCall(call);
+        IAtlas(alice.addr).executeCall(call);
 
         // Check balance not have changed
         uint256 balance = deadcoin.balanceOf(alice.addr);
@@ -330,7 +343,7 @@ contract AtlasTest is Test {
 
         vm.expectRevert(IAtlas.CallReverted.selector);
         vm.prank(alice.addr);
-        Atlas(alice.addr).executeCall(call);
+        IAtlas(alice.addr).executeCall(call);
     }
 
     // Test that the isValidSignature function returns the correct selector if hash signed by alice
@@ -338,7 +351,7 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        bytes4 result = Atlas(alice.addr).isValidSignature(hash, signature);
+        bytes4 result = IAtlas(alice.addr).isValidSignature(hash, signature);
         assert(result == IERC1271.isValidSignature.selector);
     }
 
@@ -347,7 +360,45 @@ contract AtlasTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        bytes4 result = Atlas(alice.addr).isValidSignature(hash, signature);
+        bytes4 result = IAtlas(alice.addr).isValidSignature(hash, signature);
         assert(result != IERC1271.isValidSignature.selector);
+    }
+
+    function test_canReceiveEther(uint256 amount) public {
+        EtherSenderContract senderImpl = new EtherSenderContract();
+        vm.deal(address(senderImpl), amount);
+
+        uint256 aliceInitialBalance = alice.addr.balance;
+
+        vm.prank(alice.addr);
+        senderImpl.sendEther(alice.addr, amount);
+
+        assertEq(alice.addr.balance, aliceInitialBalance + amount, "wrong balance");
+    }
+
+    function test_canReceiveERC721(uint256 id) public {
+        MockERC721 erc721 = new MockERC721();
+        erc721.mint(bob.addr, id);
+
+        assertEq(erc721.ownerOf(id), bob.addr);
+
+        vm.prank(bob.addr);
+        erc721.safeTransferFrom(bob.addr, alice.addr, id);
+
+        assertEq(erc721.ownerOf(id), alice.addr, "wrong owner");
+    }
+
+    function test_canReceiveERC1155() public {
+        uint256 id = 1;
+        uint256 amount = 100;
+        MockERC1155 erc1155 = new MockERC1155();
+        erc1155.mint(bob.addr, id, amount, "");
+
+        assertEq(erc1155.balanceOf(bob.addr, id), amount);
+
+        vm.prank(bob.addr);
+        erc1155.safeTransferFrom(bob.addr, alice.addr, id, amount, "");
+
+        assertEq(erc1155.balanceOf(alice.addr, id), amount, "wrong balance");
     }
 }
