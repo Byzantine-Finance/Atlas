@@ -3,27 +3,31 @@ pragma solidity 0.8.30;
 
 import {ECDSA} from "@solady/utils/ECDSA.sol";
 import {Receiver} from "@solady/accounts/Receiver.sol";
-import {IAtlas} from "./IAtlas.sol";
+import {IAtlas, IERC1271} from "./IAtlas.sol";
 
 contract Atlas is Receiver, IAtlas {
-    /*
-        Storage
-    */
+    /* ===================== CONSTANTS ===================== */
 
     bytes32 public constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
     bytes32 public constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
+
     bytes32 public constant EXECUTE_CALLS_TYPEHASH =
         keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+
     bytes32 public constant EXECUTE_CALL_TYPEHASH =
         keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
     bytes32 constant NAME_HASH = keccak256("Byzantine");
+
     bytes32 constant VERSION_HASH = keccak256("1");
 
     // keccak256(abi.encode(uint256(keccak256("byzantine.storage.atlas")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ATLAS_STORAGE_LOCATION =
         0x286cc92cf59df7ea6ce1672c834529dc58b6f4cac9788e59bd7a7ceae9de7600;
+
+    /* ===================== STORAGE ===================== */
 
     /// @custom:storage-location erc7201:byzantine.storage.atlas
     struct AtlasStorage {
@@ -32,10 +36,9 @@ contract Atlas is Receiver, IAtlas {
         mapping(uint256 => bool) usedNonces;
     }
 
-    /*
-        External functions
-    */
+    /* ===================== EXTERNAL FUNCTIONS ===================== */
 
+    /// @inheritdoc IAtlas
     function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
         payable
@@ -63,6 +66,7 @@ contract Atlas is Receiver, IAtlas {
         _executeCall(call);
     }
 
+    /// @inheritdoc IAtlas
     function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
         payable
@@ -97,23 +101,24 @@ contract Atlas is Receiver, IAtlas {
         _executeBatch(calls);
     }
 
+    /// @inheritdoc IAtlas
     function executeCall(Call calldata call) external payable {
         require(msg.sender == address(this), Unauthorized());
         _executeCall(call);
     }
 
+    /// @inheritdoc IAtlas
     function executeCalls(Call[] calldata calls) external payable {
         require(msg.sender == address(this), Unauthorized());
         _executeBatch(calls);
     }
 
+    /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
         return ECDSA.recover(hash, signature) == address(this) ? this.isValidSignature.selector : bytes4(0);
     }
 
-    /*
-        Private functions
-    */
+    /* ===================== PRIVATE FUNCTIONS ===================== */
 
     function _executeBatch(Call[] calldata calls) private {
         for (uint256 i; i < calls.length; ++i) {
@@ -133,14 +138,16 @@ contract Atlas is Receiver, IAtlas {
         }
     }
 
-    /*
-        Views
-    */
+    /* ===================== VIEW FUNCTIONS ===================== */
 
+    
+    /// @dev Returns the domain separator used in the encoding of the signatures, as defined by {EIP712}.
+    /// forge-lint: disable-next-line(mixed-case-function)
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 
+    /// @dev Returns whether a `nonce`has already been used by the signer
     function usedNonces(uint256 nonce) public view returns (bool) {
         return _getAtlasStorage().usedNonces[nonce];
     }
