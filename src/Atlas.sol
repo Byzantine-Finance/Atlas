@@ -1,79 +1,83 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@solady/accounts/Receiver.sol";
+import {ECDSA} from "@solady/utils/ECDSA.sol";
+import {Receiver} from "@solady/accounts/Receiver.sol";
+import {IAtlas, IERC1271} from "./IAtlas.sol";
 
 /**
- * @dev Interface of the ERC-1271 standard signature validation method for
- * contracts as defined in https://eips.ethereum.org/EIPS/eip-1271[ERC-1271].
+ * @title Atlas
+ * @author Byzantine
+ * @notice This contract is designed to be used with https://eips.ethereum.org/EIPS/eip-7702 [EIP-7702]
+ * to enable transaction batching and sponsoring for EOAs.
+ *
+ * EIP-7702 allows EOAs to temporarily set contract code, enabling them to
+ * act as smart contract wallets without deploying a separate contract. This provides a seamless
+ * way to add advanced features like batch execution and sponsored transactions to existing EOAs.
+ *
+ * @dev By delegating to the Atlas contract EOAs can execute single or multiple calls in a batch, either directly
+ * or through a sponsor using https://eips.ethereum.org/EIPS/eip-712[EIP-712] signatures.
+ * The contract is also compatible with https://eips.ethereum.org/EIPS/eip-1271 [ERC-1271] to verify whether
+ * a signature on a behalf of a given contract is valid.
+ *
+ * ## Key Features:
+ *
+ * 1. **Batch Execution**: Execute multiple calls atomically in a single transaction
+ * 2. **Sponsored Transactions**: Allow third parties (sponsors) to pay gas fees on behalf of the EOA
+ * 3. **Replay Protection**: Uses nonces to prevent signature replay attacks
+ * 4. **EIP-712 Signatures**: Secure and human-readable signature format
+ * 5. **ERC-1271 Support**: Can validate signatures for smart contract interactions
+ *
+ * ## Security Considerations:
+ *
+ * - **Nonce Management**: Each nonce can only be used once to prevent replay attacks
+ * - **Deadline**: Signatures expire after the deadline timestamp
+ * - **Signer Verification**: Only signatures from the contract itself (representing the EOA) are valid
+ * - **Authorization**: Direct calls (without signature) can only be made by the contract itself (representing the EOA)
+ *
+ * ## EIP-712 Domain:
+ * - Name: "Byzantine"
+ * - Version: "1"
+ * - ChainId: Current chain ID
+ * - VerifyingContract: This address of the EOA delegating to this contract
+ *
+ * ## Storage:
+ * Uses ERC-7201 namespaced storage pattern to avoid storage collisions in the case the EOA delegate to another contract.
  */
-interface IERC1271 {
-    /**
-     * @dev Should return whether the signature provided is valid for the provided data
-     * @param hash      Hash of the data to be signed
-     * @param signature Signature byte array associated with `hash`
-     */
-    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4);
-}
-
-interface IAtlas is IERC1271 {
-    event CallExecuted(address indexed sender, address indexed to, bytes returnData);
-
-    error InvalidSigner();
-    error ExpiredSignature();
-    error Unauthorized();
-    error NonceAlreadyUsed();
-    error CallReverted();
-
-    /// @notice Represents a single call within a batch.
-    struct Call {
-        address to;
-        uint256 value;
-        bytes data;
-    }
-
-    function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
-        external
-        payable;
-    function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
-        external
-        payable;
-    function executeCall(Call calldata call) external payable;
-    function executeCalls(Call[] calldata calls) external payable;
-}
-
 contract Atlas is Receiver, IAtlas {
-    /*
-        Storage
-    */
+    /* ===================== CONSTANTS ===================== */
 
     bytes32 public constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
     bytes32 public constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");
+
     bytes32 public constant EXECUTE_CALLS_TYPEHASH =
         keccak256("ExecuteCalls(Call[] calls,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
+
     bytes32 public constant EXECUTE_CALL_TYPEHASH =
         keccak256("ExecuteCall(Call call,uint256 deadline,uint256 nonce)Call(address to,uint256 value,bytes data)");
 
     bytes32 constant NAME_HASH = keccak256("Byzantine");
+
     bytes32 constant VERSION_HASH = keccak256("1");
 
     // keccak256(abi.encode(uint256(keccak256("byzantine.storage.atlas")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ATLAS_STORAGE_LOCATION =
         0x286cc92cf59df7ea6ce1672c834529dc58b6f4cac9788e59bd7a7ceae9de7600;
 
+    /* ===================== STORAGE ===================== */
+
     /// @custom:storage-location erc7201:byzantine.storage.atlas
     struct AtlasStorage {
         /// @notice Mapping of used nonces (true if already used)
         /// @dev Used to prevent replay attacks
-        mapping(uint256 => bool) usedNonces;
+        mapping(uint256 => bool) isNonceUsed;
     }
 
-    /*
-        External functions
-    */
+    /* ===================== EXTERNAL FUNCTIONS ===================== */
 
+    /// @inheritdoc IAtlas
     function executeCall(Call calldata call, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
         payable
@@ -84,7 +88,7 @@ contract Atlas is Receiver, IAtlas {
         require(block.timestamp <= deadline, ExpiredSignature());
 
         // Verify nonce
-        require(!$.usedNonces[nonce], NonceAlreadyUsed());
+        require(!$.isNonceUsed[nonce], NonceAlreadyUsed());
 
         // Retrieve eip-712 digest
         bytes32 encodeData = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
@@ -96,11 +100,12 @@ contract Atlas is Receiver, IAtlas {
         require(recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
-        $.usedNonces[nonce] = true;
+        $.isNonceUsed[nonce] = true;
 
         _executeCall(call);
     }
 
+    /// @inheritdoc IAtlas
     function executeCalls(Call[] calldata calls, uint256 deadline, uint256 nonce, uint8 v, bytes32 r, bytes32 s)
         external
         payable
@@ -111,7 +116,7 @@ contract Atlas is Receiver, IAtlas {
         require(block.timestamp <= deadline, ExpiredSignature());
 
         // Verify nonce
-        require(!$.usedNonces[nonce], NonceAlreadyUsed());
+        require(!$.isNonceUsed[nonce], NonceAlreadyUsed());
 
         // Hash each call individually
         bytes32[] memory callStructHashes = new bytes32[](calls.length);
@@ -130,28 +135,29 @@ contract Atlas is Receiver, IAtlas {
         require(recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
-        $.usedNonces[nonce] = true;
+        $.isNonceUsed[nonce] = true;
 
         _executeBatch(calls);
     }
 
+    /// @inheritdoc IAtlas
     function executeCall(Call calldata call) external payable {
         require(msg.sender == address(this), Unauthorized());
         _executeCall(call);
     }
 
+    /// @inheritdoc IAtlas
     function executeCalls(Call[] calldata calls) external payable {
         require(msg.sender == address(this), Unauthorized());
         _executeBatch(calls);
     }
 
+    /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
         return ECDSA.recover(hash, signature) == address(this) ? this.isValidSignature.selector : bytes4(0);
     }
 
-    /*
-        Private functions
-    */
+    /* ===================== PRIVATE FUNCTIONS ===================== */
 
     function _executeBatch(Call[] calldata calls) private {
         for (uint256 i; i < calls.length; ++i) {
@@ -171,15 +177,16 @@ contract Atlas is Receiver, IAtlas {
         }
     }
 
-    /*
-        Views
-    */
+    /* ===================== VIEW FUNCTIONS ===================== */
 
+    /// @dev Returns the domain separator used in the encoding of the signatures, as defined by {EIP712}.
+    /// forge-lint: disable-next-line(mixed-case-function)
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 
-    function usedNonces(uint256 nonce) public view returns (bool) {
-        return _getAtlasStorage().usedNonces[nonce];
+    /// @dev Returns whether a `nonce` has already been used by the signer
+    function isNonceUsed(uint256 nonce) public view returns (bool) {
+        return _getAtlasStorage().isNonceUsed[nonce];
     }
 }

@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import "@solady-test/utils/mocks/MockERC20.sol";
-import "@solady-test/utils/mocks/MockERC721.sol";
-import "@solady-test/utils/mocks/MockERC1155.sol";
+import {MockERC20} from "@solady-test/utils/mocks/MockERC20.sol";
+import {MockERC721} from "@solady-test/utils/mocks/MockERC721.sol";
+import {MockERC1155} from "@solady-test/utils/mocks/MockERC1155.sol";
+import {Atlas} from "../src/Atlas.sol";
+import {IAtlas, IERC1271} from "../src/IAtlas.sol";
+/// forge-lint: disable-next-line(unaliased-plain-import)
 import "forge-std/Test.sol";
-import "../src/Atlas.sol";
 
 contract EtherSenderContract {
     error FailedToSendEther();
@@ -107,7 +109,7 @@ contract AtlasTest is Test {
         assert(balance == INITIAL_AMOUNT - amount);
 
         // Check nonce is marked as used
-        assert(Atlas(payable(alice.addr)).usedNonces(cnonce));
+        assert(Atlas(payable(alice.addr)).isNonceUsed(cnonce));
     }
 
     // Sucess calls execution with two calls
