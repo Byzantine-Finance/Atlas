@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import "@solady-test/utils/mocks/MockERC20.sol";
 import "forge-std/Test.sol";
 import "../src/Atlas.sol";
 
 contract AtlasTest is Test {
     Atlas public atlas;
-    ERC20Mock public deadcoin;
+    MockERC20 public deadcoin;
 
-    // Initial ERC20Mock balance for Alice
+    // Initial MockERC20 balance for Alice
     uint256 constant INITIAL_AMOUNT = 100;
 
     // Alice's address and private key (EOA with no initial contract code).
@@ -31,7 +31,7 @@ contract AtlasTest is Test {
         vm.attachDelegation(signedDelegation);
 
         // Create an ERC20 Mock token
-        deadcoin = new ERC20Mock();
+        deadcoin = new MockERC20("Deadcoin", "DEAD", 18);
 
         // Mint initial balance to Alice
         deadcoin.mint(alice.addr, INITIAL_AMOUNT);
