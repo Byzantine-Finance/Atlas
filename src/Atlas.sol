@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@solady/accounts/Receiver.sol";
+import {ECDSA} from "@solady/utils/ECDSA.sol";
+import {Receiver} from "@solady/accounts/Receiver.sol";
 
 /**
  * @dev Interface of the ERC-1271 standard signature validation method for
