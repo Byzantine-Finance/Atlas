@@ -93,7 +93,7 @@ contract Atlas is Receiver, IAtlas {
 
         // Recover the signer
         address recoveredAddress = ECDSA.recover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
+        require(recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
         $.usedNonces[nonce] = true;
@@ -127,7 +127,7 @@ contract Atlas is Receiver, IAtlas {
 
         // Recover the signer
         address recoveredAddress = ECDSA.recover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == address(this), InvalidSigner());
+        require(recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
         $.usedNonces[nonce] = true;
