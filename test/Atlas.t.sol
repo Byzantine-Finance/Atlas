@@ -6,6 +6,7 @@ import {MockERC721} from "@solady-test/utils/mocks/MockERC721.sol";
 import {MockERC1155} from "@solady-test/utils/mocks/MockERC1155.sol";
 import {Atlas} from "../src/Atlas.sol";
 import {IAtlas, IERC1271} from "../src/IAtlas.sol";
+/// forge-lint: disable-next-line(unaliased-plain-import)
 import "forge-std/Test.sol";
 
 contract EtherSenderContract {
