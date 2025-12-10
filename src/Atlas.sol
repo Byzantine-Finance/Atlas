@@ -140,7 +140,6 @@ contract Atlas is Receiver, IAtlas {
 
     /* ===================== VIEW FUNCTIONS ===================== */
 
-    
     /// @dev Returns the domain separator used in the encoding of the signatures, as defined by {EIP712}.
     /// forge-lint: disable-next-line(mixed-case-function)
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
