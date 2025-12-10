@@ -5,6 +5,45 @@ import {ECDSA} from "@solady/utils/ECDSA.sol";
 import {Receiver} from "@solady/accounts/Receiver.sol";
 import {IAtlas, IERC1271} from "./IAtlas.sol";
 
+/**
+ * @title Atlas
+ * @author Byzantine
+ * @notice This contract is designed to be used with https://eips.ethereum.org/EIPS/eip-7702 [EIP-7702]
+ * to enable transaction batching and sponsoring for EOAs.
+ *
+ * EIP-7702 allows EOAs to temporarily set contract code, enabling them to
+ * act as smart contract wallets without deploying a separate contract. This provides a seamless
+ * way to add advanced features like batch execution and sponsored transactions to existing EOAs.
+ *
+ * @dev By delegating to the Atlas contract EOAs can execute single or multiple calls in a batch, either directly
+ * or through a sponsor using https://eips.ethereum.org/EIPS/eip-712[EIP-712] signatures.
+ * The contract is also compatible with https://eips.ethereum.org/EIPS/eip-1271 [ERC-1271] to verify whether
+ * a signature on a behalf of a given contract is valid.
+ *
+ * ## Key Features:
+ *
+ * 1. **Batch Execution**: Execute multiple calls atomically in a single transaction
+ * 2. **Sponsored Transactions**: Allow third parties (sponsors) to pay gas fees on behalf of the EOA
+ * 3. **Replay Protection**: Uses nonces to prevent signature replay attacks
+ * 4. **EIP-712 Signatures**: Secure and human-readable signature format
+ * 5. **ERC-1271 Support**: Can validate signatures for smart contract interactions
+ *
+ * ## Security Considerations:
+ *
+ * - **Nonce Management**: Each nonce can only be used once to prevent replay attacks
+ * - **Deadline**: Signatures expire after the deadline timestamp
+ * - **Signer Verification**: Only signatures from the contract itself (representing the EOA) are valid
+ * - **Authorization**: Direct calls (without signature) can only be made by the contract itself (representing the EOA)
+ *
+ * ## EIP-712 Domain:
+ * - Name: "Byzantine"
+ * - Version: "1"
+ * - ChainId: Current chain ID
+ * - VerifyingContract: This address of the EOA delegating to this contract
+ *
+ * ## Storage:
+ * Uses ERC-7201 namespaced storage pattern to avoid storage collisions in the case the EOA delegate to another contract.
+ */
 contract Atlas is Receiver, IAtlas {
     /* ===================== CONSTANTS ===================== */
 
