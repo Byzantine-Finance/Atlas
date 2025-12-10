@@ -33,7 +33,7 @@ contract Atlas is Receiver, IAtlas {
     struct AtlasStorage {
         /// @notice Mapping of used nonces (true if already used)
         /// @dev Used to prevent replay attacks
-        mapping(uint256 => bool) usedNonces;
+        mapping(uint256 => bool) isNonceUsed;
     }
 
     /* ===================== EXTERNAL FUNCTIONS ===================== */
@@ -49,7 +49,7 @@ contract Atlas is Receiver, IAtlas {
         require(block.timestamp <= deadline, ExpiredSignature());
 
         // Verify nonce
-        require(!$.usedNonces[nonce], NonceAlreadyUsed());
+        require(!$.isNonceUsed[nonce], NonceAlreadyUsed());
 
         // Retrieve eip-712 digest
         bytes32 encodeData = keccak256(abi.encode(CALL_TYPEHASH, call.to, call.value, keccak256(call.data)));
@@ -61,7 +61,7 @@ contract Atlas is Receiver, IAtlas {
         require(recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
-        $.usedNonces[nonce] = true;
+        $.isNonceUsed[nonce] = true;
 
         _executeCall(call);
     }
@@ -77,7 +77,7 @@ contract Atlas is Receiver, IAtlas {
         require(block.timestamp <= deadline, ExpiredSignature());
 
         // Verify nonce
-        require(!$.usedNonces[nonce], NonceAlreadyUsed());
+        require(!$.isNonceUsed[nonce], NonceAlreadyUsed());
 
         // Hash each call individually
         bytes32[] memory callStructHashes = new bytes32[](calls.length);
@@ -96,7 +96,7 @@ contract Atlas is Receiver, IAtlas {
         require(recoveredAddress == address(this), InvalidSigner());
 
         // Mark the nonce as used
-        $.usedNonces[nonce] = true;
+        $.isNonceUsed[nonce] = true;
 
         _executeBatch(calls);
     }
@@ -140,15 +140,14 @@ contract Atlas is Receiver, IAtlas {
 
     /* ===================== VIEW FUNCTIONS ===================== */
 
-    
     /// @dev Returns the domain separator used in the encoding of the signatures, as defined by {EIP712}.
     /// forge-lint: disable-next-line(mixed-case-function)
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 
-    /// @dev Returns whether a `nonce`has already been used by the signer
-    function usedNonces(uint256 nonce) public view returns (bool) {
-        return _getAtlasStorage().usedNonces[nonce];
+    /// @dev Returns whether a `nonce` has already been used by the signer
+    function isNonceUsed(uint256 nonce) public view returns (bool) {
+        return _getAtlasStorage().isNonceUsed[nonce];
     }
 }

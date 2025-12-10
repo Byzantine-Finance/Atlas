@@ -109,7 +109,7 @@ contract AtlasTest is Test {
         assert(balance == INITIAL_AMOUNT - amount);
 
         // Check nonce is marked as used
-        assert(Atlas(payable(alice.addr)).usedNonces(cnonce));
+        assert(Atlas(payable(alice.addr)).isNonceUsed(cnonce));
     }
 
     // Sucess calls execution with two calls
