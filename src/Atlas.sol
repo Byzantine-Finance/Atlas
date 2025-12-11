@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {ECDSA} from "@solady/utils/ECDSA.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Receiver} from "@solady/accounts/Receiver.sol";
 import {IAtlas, IERC1271} from "./IAtlas.sol";
 
