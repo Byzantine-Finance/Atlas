@@ -154,7 +154,8 @@ contract Atlas is Receiver, IAtlas {
 
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-        return ECDSA.recover(hash, signature) == address(this) ? this.isValidSignature.selector : bytes4(0);
+        (address recovered,,) = ECDSA.tryRecover(hash, signature);
+        return recovered == address(this) ? this.isValidSignature.selector : bytes4(0);
     }
 
     /* ===================== PRIVATE FUNCTIONS ===================== */

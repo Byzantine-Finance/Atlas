@@ -367,7 +367,13 @@ contract AtlasTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         bytes4 result = IAtlas(alice.addr).isValidSignature(hash, signature);
-        assert(result != IERC1271.isValidSignature.selector);
+        assert(result == 0x00);
+    }
+
+    // Test that the isValidSignature function does not revert if the signature is malformed
+    function test_isValidSignature_malformedSignature(bytes32 hash, bytes calldata malformedSignature) public view {
+        bytes4 result = IAtlas(alice.addr).isValidSignature(hash, malformedSignature);
+        assert(result == 0x00);
     }
 
     function test_canReceiveEther(uint256 amount) public {
