@@ -64,7 +64,7 @@ contract Atlas is Receiver, IAtlas {
 
     // keccak256(abi.encode(uint256(keccak256("byzantine.storage.atlas")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ATLAS_STORAGE_LOCATION =
-        0x286cc92cf59df7ea6ce1672c834529dc58b6f4cac9788e59bd7a7ceae9de7600;
+        0x7b665f45e4b9dda43280f67c1696d154475f0e64f9b905838885415666944f00;
 
     /* ===================== STORAGE ===================== */
 
