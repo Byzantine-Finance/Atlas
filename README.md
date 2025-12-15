@@ -1,24 +1,98 @@
-## Batch and call sponsor contract
+# Atlas - EIP-7702 Smart Contract Wallet
 
-> [!WARNING]
-> This contract hasn't been audited and is still work in progress. Don't use in production.
+> [!NOTE] > **Audited Contract** ✅  
+> Atlas has been [audited by Cantina](https://github.com/Byzantine-Finance/batch-call-and-sponsor/blob/main/audits/Atlas%20-%20Cantina%20Audit%20-%20Dec%202025.pdf) and is ready for production use.
 
-This contract will be used for gas sponsorship. In order to allow sponsoring gas the user will have to sign an [EIP 7702](https://eips.ethereum.org/EIPS/eip-7702) authorization with this contract as a template. The authorization can then be broacasted by a third party and sponsored the gas for this user.
+**Atlas** is a smart contract wallet designed to be used with [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702) to enable transaction batching and sponsored transactions for Externally Owned Accounts (EOAs).
 
-## Run tests
+## 🌐 Deployed Address
 
-There is a simple test that proceed to do the delegation to Bob and have Bob executing a ERC20 transfer. And another test that verify that we can't resend an already submitted call.
+Atlas is deployed at the **same address on all EVM chains**:
 
-```bash
-$ forge test -vvv
+```
+0x3d965CFdDA791589cCAB955498D509f2F7E30b79
 ```
 
-## Security considerations
+This deterministic address was achieved using CREATE2. To deploy Atlas on a chain not supported yet, see the[ Atlas V1 Deployment script](https://github.com/Byzantine-Finance/batch-call-and-sponsor/blob/main/script/Deploy_Atlas_v1.s.sol).
 
-* Authorizations are permanent. Once the transaction executed the EOA keep its bytecodes until it is being reversed by signing an authorization to the zero address.
+## ✨ Key Features
 
-* Any storage set at the EOA address is persitent between authorization. The storage should be cleared.
+1. **Batch Execution**: Execute multiple calls atomically in a single transaction
+2. **Sponsored Transactions**: Allow third parties (sponsors) to pay gas fees on behalf of the EOA
+3. **Replay Protection**: Uses nonces to prevent signature replay attacks
+4. **EIP-712 Signatures**: Secure and human-readable signature format
+5. **ERC-1271 Support**: Can validate signatures for smart contract interactions
 
-* The contract can be called by anyone. It should be consider to limit the access to only the some sponsors. The previous point should be consider if we start to store address that can run `execute` calls.
+## 🔧 How It Works
 
+EIP-7702 allows EOAs to temporarily or persitently set contract code, enabling them to act as smart contract wallets without deploying a separate contract. This provides a seamless way to add advanced features like batch execution and sponsored transactions to existing EOAs.
 
+### Usage Patterns
+
+#### Pattern 1: Direct Execution (EOA pays gas)
+
+The EOA directly calls Atlas functions after delegating to it:
+
+```solidity
+// 1. EOA signs EIP-7702 authorization to delegate to Atlas
+// 2. EOA calls directly
+Atlas(eoaAddress).executeCall(Call({
+    to: target,
+    value: 0,
+    data: calldata
+}));
+```
+
+#### Pattern 2: Sponsored Execution (Sponsor pays gas)
+
+A third party (sponsor) pays the gas fees on behalf of the EOA:
+
+```solidity
+// 1. EOA signs EIP-7702 authorization to delegate to Atlas
+// 2. EOA signs the call off-chain using EIP-712
+// 3. Sponsor submits the signature on-chain and pays gas
+Atlas(eoaAddress).executeCall(call, deadline, nonce, v, r, s);
+```
+
+## 🛡️ Security Considerations
+
+- **Nonce Management**: Each nonce can only be used once to prevent replay attacks
+- **Deadline**: Signatures expire after the deadline timestamp
+- **Signer Verification**: Only signatures from the EOA itself are valid
+- **Authorization**: Direct calls (without signature) can only be made by the EOA itself
+- **ERC-7201 Storage**: Uses namespaced storage pattern to avoid storage collisions in case the EOA decides to delegate to another contract.
+
+## 📝 EIP-712 Domain
+
+- **Name**: "Byzantine"
+- **Version**: "1"
+- **ChainId**: Current chain ID
+- **VerifyingContract**: Address of the EOA delegating to Atlas
+
+## 🔗 Related EIPs
+
+- [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702): Set EOA account code for one transaction
+- [EIP-712](https://eips.ethereum.org/EIPS/eip-712): Typed structured data hashing and signing
+- [EIP-1271](https://eips.ethereum.org/EIPS/eip-1271): Standard Signature Validation Method for Contracts
+
+## 🧪 Run Tests
+
+```bash
+forge test -vvv
+```
+
+The test suite includes:
+
+- Single and batch call execution
+- Sponsored transaction flows
+- Replay attack prevention
+- Signature validation (ERC-1271)
+- ERC20, ERC721, and ERC1155 token reception
+
+## 📄 License
+
+MIT
+
+---
+
+Built with ❤️ by [Byzantine](https://github.com/Byzantine-Finance)
