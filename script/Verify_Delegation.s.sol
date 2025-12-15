@@ -26,7 +26,7 @@ import {Atlas} from "../src/Atlas.sol";
 contract VerifyDelegationScript is Script {
     // EIP-7702 magic bytes
     bytes3 constant EIP7702_MAGIC = 0xef0100;
-    
+
     // Expected Atlas address
     address constant ATLAS_ADDRESS = 0x3d965CFdDA791589cCAB955498D509f2F7E30b79;
 
@@ -56,7 +56,7 @@ contract VerifyDelegationScript is Script {
         if (code.length == 23) {
             // Extract magic bytes
             bytes3 magic = bytes3(code);
-            
+
             if (magic == EIP7702_MAGIC) {
                 console.log("Type: EIP-7702 Delegation");
                 console.log("");
@@ -72,7 +72,7 @@ contract VerifyDelegationScript is Script {
                 }
 
                 console.log("Delegated to:", delegatedTo);
-                
+
                 // Check if it's delegated to Atlas
                 if (delegatedTo == ATLAS_ADDRESS) {
                     console.log("Result: DELEGATED TO ATLAS");
