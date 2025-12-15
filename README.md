@@ -27,7 +27,23 @@ This deterministic address was achieved using CREATE2. To deploy Atlas on a chai
 
 EIP-7702 allows EOAs to temporarily or persitently set contract code, enabling them to act as smart contract wallets without deploying a separate contract. This provides a seamless way to add advanced features like batch execution and sponsored transactions to existing EOAs.
 
-### Usage Patterns
+## 🚀 Quick Start: Delegate to Atlas
+
+You can delegate your EOA to Atlas using `cast send` with the `--auth` flag. This will enable your EOA to use Atlas's functionality untill you revert the delegation (delegate to the contract address(0)).
+
+### Basic Persistent Delegation
+
+_$PRIVATE_KEY is here the private key the EOA that wants to have code_
+
+```bash
+cast send [YOUR_EOA_ADDRESS] \
+  --auth 0x3d965CFdDA791589cCAB955498D509f2F7E30b79 \
+  --rpc-url $RPC_URL \
+  --private-key $PRIVATE_KEY \
+  -vvvv
+```
+
+## Usage Patterns
 
 #### Pattern 1: Direct Execution (EOA pays gas)
 
@@ -74,6 +90,7 @@ Atlas(eoaAddress).executeCall(call, deadline, nonce, v, r, s);
 - [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702): Set EOA account code for one transaction
 - [EIP-712](https://eips.ethereum.org/EIPS/eip-712): Typed structured data hashing and signing
 - [EIP-1271](https://eips.ethereum.org/EIPS/eip-1271): Standard Signature Validation Method for Contracts
+- [EIP-7201](https://eips.ethereum.org/EIPS/eip-7201): Namespaced storage pattern to avoid storage collisions in case of multiple delegations.
 
 ## 🧪 Run Tests
 
