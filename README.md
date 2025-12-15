@@ -43,6 +43,24 @@ cast send [YOUR_EOA_ADDRESS] \
   -vvvv
 ```
 
+### Verify Delegation
+
+You can verify if an EOA is delegated to Atlas and extract the delegation address using the verification script:
+
+```bash
+export EOA_ADDRESS=0xYourEOAAddress
+forge script script/Verify_Delegation.s.sol:VerifyDelegationScript \
+  --rpc-url $RPC_URL \
+  -vvvv
+```
+
+The script will display:
+
+- Delegation status (delegated or not)
+- Type of delegation (EIP-7702 or other)
+- Address of the delegated contract
+- Confirmation if it's delegated to Atlas
+
 ## Usage Patterns
 
 #### Pattern 1: Direct Execution (EOA pays gas)
